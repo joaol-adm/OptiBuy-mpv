@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Processador de Planilhas</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tablesort@5.2.1/dist/tablesort.min.js"></script>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    input[type="file"], input[type="text"], select { margin-bottom: 10px; display: block; }
+    button { margin: 10px 5px; padding: 8px 12px; }
+    table { border-collapse: collapse; margin-top: 20px; font-size: 14px; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: right; }
+    th { background-color: #f0f0f0; text-align: center; cursor: pointer; }
+    td:first-child, th:first-child, td:nth-child(2), th:nth-child(2) { text-align: left; }
+    input[type="number"] { width: 80px; }
+
+    .azul-claro { background-color: #d0ebff; }
+    .verde-claro { background-color: #d3f9d8; }
+    .laranja-claro { background-color: #ffe8cc; }
+    .amarelo-claro { background-color: #fff9c4; }
+    .vermelho-claro { background-color: #ffcdd2; }
+    .cinza-claro { background-color: #eeeeee; }
+
+    .filtros { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
+    .filtros div { display: flex; flex-direction: column; font-size: 14px; }
+    .filtros input { padding: 4px; }
+
+.processing-message {
+  display: none;
+  font-weight: bold;
+  color: #004080;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #004080;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
+  </style>
+</head>
+<body>
+  <h2>Importador de Planilhas</h2>
+
+<label>SELECIONE PASTA DE TRABALHO:</label>
+<input type="file" id="folderUpload" webkitdirectory directory multiple />
+<button onclick="carregarArquivosDaPasta()">Carregar arquivos da pasta</button>
+
+  <div>
+  <!-- INPUTS DE ARQUIVO -->
+  <!-- (mantidos como no original) -->
+  <label>PRODUTOS_COMPRA:</label>
+  <input type="file" id="produtos_compra" accept=".csv,.xlsx">
+  <label>ENTREGA:</label>
+  <input type="file" id="entrega" accept=".csv,.xlsx">
+  <label>PRODUTOS_VENDA:</label>
+  <input type="file" id="produtos_venda" accept=".csv,.xlsx">
+  <label>RECEITA:</label>
+  <input type="file" id="receita" accept=".csv,.xlsx">
+  <label>PACKING_LIST:</label>
+  <input type="file" id="packing_list" accept=".csv,.xlsx">
+  <label>TABELA_PRECOS_PLATLOG:</label>
+  <input type="file" id="tabela_precos_platlog" accept=".csv,.xlsx">
+  <label>TABELA_PRECOS_AMBEV:</label>
+  <input type="file" id="tabela_precos_ambev" accept=".csv,.xlsx">     
+  <label>STOCK:</label>     
+  <input type="file" id="stock" accept=".csv,.xlsx">
+
+  <button onclick="processar()">REPROCESSAR</button>
+  <button onclick="exportar()">Exportar para XLSX</button>
+
+<div class="processing-message" id="processingMessage">
+  <div class="spinner"></div>
+  <span>Aguarde! Processando...</span>
+</div>
+
+
+
+
+  <!-- FILTROS POR INTERVALO -->
+  <div class="filtros">
+    <div>
+      <label>DESCRICAO contém:</label>
+      <input type="text" id="filtroDescricao" oninput="aplicarFiltrosExternos()">
+    </div>
+    <div>
+      <label>Receber (min):</label>
+      <input type="number" id="filtroReceberMin" oninput="aplicarFiltrosExternos()">
+      <label>Receber (max):</label>
+      <input type="number" id="filtroReceberMax" oninput="aplicarFiltrosExternos()">
+    </div>
+    <div>
+      <label>ESTOQUE (min):</label>
+      <input type="number" id="filtroEstoqueMin" oninput="aplicarFiltrosExternos()">
+      <label>ESTOQUE (max):</label>
+      <input type="number" id="filtroEstoqueMax" oninput="aplicarFiltrosExternos()">
+    </div>
+    <div>
+      <label>SugestaoCompra (min):</label>
+      <input type="number" id="filtroSugestaoCompraMin" oninput="aplicarFiltrosExternos()">
+      <label>SugestaoCompra (max):</label>
+      <input type="number" id="filtroSugestaoCompraMax" oninput="aplicarFiltrosExternos()">
+    </div>
+    <div>
+      <label>COMPRAR (min):</label>
+      <input type="number" id="filtroComprarMin" oninput="aplicarFiltrosExternos()">
+      <label>COMPRAR (max):</label>
+      <input type="number" id="filtroComprarMax" oninput="aplicarFiltrosExternos()">
+    </div>
+  </div>
+
+  <div id="tabelaResultado"></div>
+
+  <!-- O RESTANTE DO SCRIPT JAVASCRIPT PERMANECE O MESMO DO CÓDIGO ORIGINAL -->
+  <!-- ADICIONE AO FINAL DO SCRIPT UMA FUNÇÃO aplicarFiltrosExternos() COMO ABAIXO: -->
+
+
+ <script>
+    let dadosGlobais = {};
+    let planilhaFinal = [];
+
+    async function lerArquivo(input) {
+      return new Promise((resolve) => {
+        const file = input.files[0];
+        if (!file) return resolve([]);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+          resolve(json);
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function processar() {
+      const arquivos = [
+        'produtos_compra', 'entrega', 'produtos_venda', 'receita',
+        'packing_list', 'tabela_precos_platlog', 'tabela_precos_ambev', 'stock'
+      ];
+
+      for (const id of arquivos) {
+        dadosGlobais[id] = await lerArquivo(document.getElementById(id));
+      }
+
+      const compra = dadosGlobais['produtos_compra'];
+      const entrega = Object.fromEntries(dadosGlobais['entrega'].map(e => [e.CODRECEBE, e.Receber]));
+      const packing = Object.fromEntries(dadosGlobais['packing_list'].map(p => [p.CODPL, p.CAIXA]));
+      const platlog = Object.fromEntries(dadosGlobais['tabela_precos_platlog'].map(p => [p.CODPRECO, p.CODIGOSAP]));
+      const estoqueMap = Object.fromEntries(dadosGlobais['stock'].map(s => [s.CODSTK, parseFloat(s.ESTOQUE) || 0]));
+
+      const venda = dadosGlobais['produtos_venda'];
+      const receita = dadosGlobais['receita'];
+
+      const ultimos14Dias = [...new Set(venda.map(v => v.Dia))]
+        .filter(d => d)
+        .sort((a, b) => new Date(b) - new Date(a))
+        .slice(0, 14);
+
+document.getElementById('processingMessage').style.display = 'flex';
+
+document.getElementById('processingMessage').style.display = 'none';
+
+      let tabela = [];
+
+      for (const item of compra) {
+        const codplat = item.CODPLAT;
+        const desc = item.DESCRICAO || '';
+        const caixa = parseFloat(packing[codplat]) || 0;
+        const receber = parseFloat(entrega[codplat]) || 0;
+        const proxEntregaQtde = caixa * receber;
+        const codigosap = platlog[codplat];
+        const estoque = estoqueMap[codplat] || 0;
+
+        let diasValores = {};
+        for (const dia of ultimos14Dias) {
+          let valorTotal = 0;
+          const vendasDoDia = venda.filter(v => v.Dia === dia);
+          for (const v of vendasDoDia) {
+            const receitaFiltrada = receita.filter(r => r.Material == v.Codigo && r.Componente == codigosap);
+            for (const r of receitaFiltrada) {
+              const qtd = parseFloat(r['Qtd.']) || 0;
+              const qtdeVenda = parseFloat(v.Qtde) || 0;
+              valorTotal += qtd * qtdeVenda;
+            }
+          }
+          diasValores[dia] = valorTotal;
+        }
+
+        const valores = ultimos14Dias.map(d => diasValores[d] || 0);
+        const media7 = (valores.slice(0, 7).reduce((a, b) => a + b, 0) / 7).toFixed(1);
+        const media14 = (valores.reduce((a, b) => a + b, 0) / 14).toFixed(1);
+        const pico14 = Math.max(...valores).toFixed(1);
+
+        let diasDeEstoque = 100;
+        if (parseFloat(media7) > 0) {
+          diasDeEstoque = ((estoque + proxEntregaQtde) / parseFloat(media7)).toFixed(1);
+        }
+
+        let sugestao = (10 - diasDeEstoque) * parseFloat(media7);
+        sugestao = sugestao > 0 ? sugestao.toFixed(1) : "0";
+
+        let linha = {
+          CODPLAT: codplat,
+          DESCRICAO: desc,
+          CAIXA: caixa,
+          Receber: receber,
+          ProxEntregaQtde: proxEntregaQtde,
+          ESTOQUE: estoque,
+          DiasDeEstoque: diasDeEstoque,
+          SugestaoCompra: sugestao,
+          COMPRAR: 0,
+          'Media-7': media7,
+          'Media-14': media14,
+          'Pico-14': pico14,
+        };
+
+        for (const dia of ultimos14Dias) {
+          linha[dia] = (diasValores[dia] || 0).toFixed(1);
+        }
+
+        tabela.push(linha);
+      }
+
+      planilhaFinal = tabela;
+      mostrarTabela(tabela, ultimos14Dias);
+
+      // Salvar no localStorage
+      localStorage.setItem('planilhaFinal', JSON.stringify(planilhaFinal));
+    }
+
+    function mostrarTabela(tabela, dias) {
+      let html = '<table id="tabela"><thead><tr>';
+      const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "SugestaoCompra", "COMPRAR", "Media-7", "Media-14", "Pico-14"];
+      html += colunasFixas.map(c => `<th>${c}</th>`).join('');
+      html += dias.map(d => `<th>${d}</th>`).join('');
+      html += '</tr></thead><tbody>';
+
+      tabela.forEach((row, i) => {
+        html += '<tr>';
+        colunasFixas.forEach(col => {
+          let val = row[col];
+          let classe = '';
+          if (col === 'Media-7' || col === 'Media-14') classe = 'azul-claro';
+       //   if (col === 'ProxEntregaQtde') classe = 'verde-claro';
+          if (col === 'Pico-14') classe = 'laranja-claro';
+          if (col === 'DiasDeEstoque') {
+            if (val == 100) classe = 'vermelho-claro';
+            else if (val > 0 && val <= 5.9) classe = 'laranja-claro';
+            else if (val > 5.9 && val <= 7) classe = 'amarelo-claro';
+            else if (val > 7) classe = 'verde-claro';
+          }
+          if (col === 'SugestaoCompra' && parseFloat(val) > 0) classe = 'cinza-claro';
+
+	  if (col === 'ProxEntregaQtde' && val > 0) classe = 'verde-claro';
+
+          if (col === 'COMPRAR') {
+            html += `<td><input type="number" value="${val}" onchange="planilhaFinal[${i}].COMPRAR = parseInt(this.value) || 0; salvarLocalStorage()"></td>`;
+          } else {
+            html += `<td class="${classe}">${val}</td>`;
+          }
+        });
+        dias.forEach(d => html += `<td>${tabela[i][d]}</td>`);
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      document.getElementById('tabelaResultado').innerHTML = html;
+      new Tablesort(document.getElementById('tabela'));
+    }
+
+    function exportar() {
+      const ws = XLSX.utils.json_to_sheet(planilhaFinal);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Resultado");
+      const agora = new Date();
+      const nome = `BK26487_${agora.getDate().toString().padStart(2, '0')}${(agora.getMonth()+1).toString().padStart(2, '0')}${agora.getFullYear().toString().slice(-2)}_${agora.getHours().toString().padStart(2, '0')}${agora.getMinutes().toString().padStart(2, '0')}`;
+      XLSX.writeFile(wb, `${nome}.xlsx`);
+    }
+
+    // Salvar planilhaFinal no localStorage após alterações no campo COMPRAR
+    function salvarLocalStorage() {
+      localStorage.setItem('planilhaFinal', JSON.stringify(planilhaFinal));
+    }
+
+    // Ao carregar a página, tenta carregar tabela salva
+    window.addEventListener('load', () => {
+      const tabelaSalva = localStorage.getItem('planilhaFinal');
+      if (tabelaSalva) {
+        planilhaFinal = JSON.parse(tabelaSalva);
+        // Precisa extrair os dias para exibir a tabela
+        // Dias estão nas chaves do primeiro item, exceto as fixas
+        if (planilhaFinal.length > 0) {
+          const todosCampos = Object.keys(planilhaFinal[0]);
+          const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "SugestaoCompra", "COMPRAR", "Media-7", "Media-14", "Pico-14"];
+          const dias = todosCampos.filter(c => !colunasFixas.includes(c));
+          mostrarTabela(planilhaFinal, dias);
+        }
+      }
+    });
+
+    function aplicarFiltrosExternos() {
+      const descFiltro = document.getElementById('filtroDescricao').value.toLowerCase();
+
+      const getMin = id => parseFloat(document.getElementById(id).value);
+      const getMax = id => parseFloat(document.getElementById(id).value);
+
+      const recMin = getMin('filtroReceberMin');
+      const recMax = getMax('filtroReceberMax');
+      const estMin = getMin('filtroEstoqueMin');
+      const estMax = getMax('filtroEstoqueMax');
+      const sugMin = getMin('filtroSugestaoCompraMin');
+      const sugMax = getMax('filtroSugestaoCompraMax');
+      const comMin = getMin('filtroComprarMin');
+      const comMax = getMax('filtroComprarMax');
+
+      document.querySelectorAll('#tabela tbody tr').forEach(tr => {
+        const tds = tr.querySelectorAll('td');
+        const desc = tds[1].textContent.toLowerCase();
+        const rec = parseFloat(tds[3].textContent);
+        const est = parseFloat(tds[5].textContent);
+        const sug = parseFloat(tds[7].textContent);
+        const com = parseFloat(tr.querySelector('input[type=number]').value);
+
+        const dentroIntervalo = (val, min, max) => (
+          (!isNaN(min) ? val >= min : true) && (!isNaN(max) ? val <= max : true)
+        );
+
+        const mostrar = desc.includes(descFiltro)
+          && dentroIntervalo(rec, recMin, recMax)
+          && dentroIntervalo(est, estMin, estMax)
+          && dentroIntervalo(sug, sugMin, sugMax)
+          && dentroIntervalo(com, comMin, comMax);
+
+        tr.style.display = mostrar ? '' : 'none';
+      });
+    }
+
+function carregarArquivosDaPasta() {
+  const folderInput = document.getElementById('folderUpload');
+
+  const mapaArquivos = {
+    "BKQBF_TAB-1": "produtos_compra",
+    "BKQBF_TAB-2": "entrega",
+    "BKQBF_TAB-3": "produtos_venda",
+    "BKQBF_TAB-4": "receita",
+    "BKQBF_TAB-5": "packing_list",
+    "BKQBF_TAB-6": "tabela_precos_platlog",
+    "BKQBF_TAB-7": "tabela_precos_ambev",
+    "BKQBF_TAB-8": "stock"
+  };
+
+  const arquivosSelecionados = folderInput.files;
+
+  if (!arquivosSelecionados.length) {
+    alert("Nenhuma pasta ou arquivos foram selecionados.");
+    return;
+  }
+
+  const atribuicoes = {};
+
+  for (const file of arquivosSelecionados) {
+    const nomeArquivo = file.name.toUpperCase();
+    for (const substring in mapaArquivos) {
+      if (nomeArquivo.includes(substring)) {
+        const idInput = mapaArquivos[substring];
+        atribuicoes[idInput] = file;
+        break;
+      }
+    }
+  }
+
+  for (const id in mapaArquivos) {
+    const inputId = mapaArquivos[id];
+    const input = document.getElementById(inputId);
+    if (atribuicoes[inputId]) {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(atribuicoes[inputId]);
+      input.files = dataTransfer.files;
+    } else {
+      console.warn(`Arquivo correspondente a "${id}" não foi encontrado.`);
+    }
+  }
+
+  alert("Arquivos atribuídos automaticamente com base na pasta. Clique em REPROCESSAR.");
+}
+
+
+  </script>
+</body>
+</html>
