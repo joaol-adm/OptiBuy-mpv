@@ -2,7 +2,8 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>OptiBuy - mvp-0</title>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Processador de Planilhas - GitHub CSV</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tablesort@5.2.1/dist/tablesort.min.js"></script>
   <style>
@@ -54,12 +55,54 @@
   </style>
 </head>
 <body>
-  <h2>OptiBuy - mvp-0</h2>
-  <h3>Powered by OpTiXis</h3>
+  <h2>Importador de Planilhas</h2>
 
 <label>SELECIONE PASTA DE TRABALHO:</label>
 <input type="file" id="folderUpload" webkitdirectory directory multiple />
 <button onclick="carregarArquivosDaPasta()">Carregar arquivos da pasta</button>
+
+<!-- ▼▼▼ ADICIONAR: Controles para CSV remoto diretamente da raiz do GitHub Pages -->
+<details style="margin:12px 0">
+  <summary style="cursor:pointer;font-weight:bold">➕ Carregar alguns CSVs direto da raiz do site (GitHub Pages)</summary>
+  <p style="font-size:12px;color:#555;margin:8px 0 12px">
+    Se marcado, quando o input estiver <b>vazio</b> o sistema tenta baixar <code>/{nome-do-arquivo}.csv</code> da mesma pasta do site.
+  </p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
+      <label style="font-weight:bold"><input type="checkbox" id="remote_entrega" checked> ENTREGAS</label>
+      <input type="text" id="remote_name_entrega" value="entrega.csv" style="width:100%;margin-top:6px">
+      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
+    </div>
+
+    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
+      <label style="font-weight:bold"><input type="checkbox" id="remote_packing_list" checked> PACKING_LIST</label>
+      <input type="text" id="remote_name_packing_list" value="packing_list.csv" style="width:100%;margin-top:6px">
+      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
+    </div>
+
+    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
+      <label style="font-weight:bold"><input type="checkbox" id="remote_tabela_precos_platlog" checked> TABELA_PRECOS_PLATLOG</label>
+      <input type="text" id="remote_name_tabela_precos_platlog" value="tabela_precos_platlog.csv" style="width:100%;margin-top:6px">
+      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
+    </div>
+
+    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
+      <label style="font-weight:bold"><input type="checkbox" id="remote_tabela_precos_ambev" checked> TABELA_PRECOS_AMBEV</label>
+      <input type="text" id="remote_name_tabela_precos_ambev" value="tabela_precos_ambev.csv" style="width:100%;margin-top:6px">
+      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
+    </div>
+
+    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
+      <label style="font-weight:bold"><input type="checkbox" id="remote_stock" checked> STOCK</label>
+      <input type="text" id="remote_name_stock" value="stock.csv" style="width:100%;margin-top:6px">
+      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
+    </div>
+  </div>
+</details>
+<!-- ▲▲▲ FIM DO BLOCO -->
+
+
 
   <div>
   <!-- INPUTS DE ARQUIVO -->
@@ -134,6 +177,37 @@
     let dadosGlobais = {};
     let planilhaFinal = [];
 
+// ▼▼▼ ADICIONAR: helpers para carregar CSV remoto do GitHub Pages
+function getBaseURL() {
+  // monta base que funciona na raiz e em subpasta do Pages
+  let base = location.origin + location.pathname;
+  if (!base.endsWith('/')) base += '/';
+  return base;
+}
+
+async function lerCSVRemoto(nomeArquivo) {
+  const url = getBaseURL() + nomeArquivo;
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) {
+    throw new Error(`Falha ao carregar ${url} [${resp.status}]`);
+  }
+  const texto = await resp.text();
+  const workbook = XLSX.read(texto, { type: 'string' });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+}
+
+function getRemoteToggle(id) {
+  const el = document.getElementById('remote_' + id);
+  return el ? el.checked : false;
+}
+function getRemoteName(id) {
+  const el = document.getElementById('remote_name_' + id);
+  return el ? el.value.trim() : '';
+}
+// ▲▲▲ FIM helpers
+
+
     async function lerArquivo(input) {
       return new Promise((resolve) => {
         const file = input.files[0];
@@ -156,9 +230,32 @@
         'packing_list', 'tabela_precos_platlog', 'tabela_precos_ambev', 'stock'
       ];
 
-      for (const id of arquivos) {
-        dadosGlobais[id] = await lerArquivo(document.getElementById(id));
-      }
+ // LIGA spinner
+  document.getElementById('processingMessage').style.display = 'flex';
+
+   // for (const id of arquivos) {
+   //     dadosGlobais[id] = await lerArquivo(document.getElementById(id));
+   //   }
+
+for (const id of arquivos) {
+  const inputEl = document.getElementById(id);
+  if (inputEl.files && inputEl.files.length) {
+    // 1) se o usuário selecionou arquivo, usa o local
+    dadosGlobais[id] = await lerArquivo(inputEl);
+  } else if (getRemoteToggle(id)) {
+    // 2) se NÃO tem arquivo e a opção remota está marcada, tenta baixar da raiz do site
+    const nomeRemoto = getRemoteName(id);
+    try {
+      dadosGlobais[id] = await lerCSVRemoto(nomeRemoto);
+    } catch (e) {
+      console.error('Erro ao buscar remoto', id, e);
+      dadosGlobais[id] = []; // garante estrutura
+    }
+  } else {
+    // 3) caso contrário, mantém vazio
+    dadosGlobais[id] = [];
+  }
+}
 
       const compra = dadosGlobais['produtos_compra'];
       const entrega = Object.fromEntries(dadosGlobais['entrega'].map(e => [e.CODRECEBE, e.Receber]));
@@ -174,9 +271,9 @@
         .sort((a, b) => new Date(b) - new Date(a))
         .slice(0, 14);
 
-document.getElementById('processingMessage').style.display = 'flex';
+// document.getElementById('processingMessage').style.display = 'flex';
 
-document.getElementById('processingMessage').style.display = 'none';
+// document.getElementById('processingMessage').style.display = 'none';
 
       let tabela = [];
 
@@ -284,6 +381,10 @@ document.getElementById('processingMessage').style.display = 'none';
       html += '</tbody></table>';
       document.getElementById('tabelaResultado').innerHTML = html;
       new Tablesort(document.getElementById('tabela'));
+
+  // DESLIGA spinner ao final
+  document.getElementById('processingMessage').style.display = 'none';
+
     }
 
     function exportar() {
@@ -406,4 +507,3 @@ function carregarArquivosDaPasta() {
   </script>
 </body>
 </html>
-
