@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Processador de Planilhas - GitHub CSV</title>
+  <meta charset="UTF-8" />
+  <title>Processador de Planilhas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bibliotecas externas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tablesort@5.2.1/dist/tablesort.min.js"></script>
+
   <style>
-    body { font-family: Arial; margin: 20px; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
     input[type="file"], input[type="text"], select { margin-bottom: 10px; display: block; }
     button { margin: 10px 5px; padding: 8px 12px; }
     table { border-collapse: collapse; margin-top: 20px; font-size: 14px; width: 100%; }
@@ -27,115 +30,91 @@
     .filtros div { display: flex; flex-direction: column; font-size: 14px; }
     .filtros input { padding: 4px; }
 
-.processing-message {
-  display: none;
-  font-weight: bold;
-  color: #004080;
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+    .processing-message {
+      display: none;
+      font-weight: bold;
+      color: #004080;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #004080;
+      border-radius: 50%;
+      width: 18px; height: 18px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
 
-.spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #004080;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-
+    details { margin: 12px 0; }
+    details summary { cursor: pointer; font-weight: bold; }
+    .remote-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+    .remote-item { border: 1px solid #e5e5e5; border-radius: 8px; padding: 8px 10px; }
+    .remote-item label { display: block; font-weight: bold; margin-bottom: 4px; }
+    .small { font-size: 12px; color: #666; }
+    code { background: #f7f7f7; padding: 0 4px; border-radius: 4px; }
   </style>
 </head>
 <body>
   <h2>Importador de Planilhas</h2>
 
-<label>SELECIONE PASTA DE TRABALHO:</label>
-<input type="file" id="folderUpload" webkitdirectory directory multiple />
-<button onclick="carregarArquivosDaPasta()">Carregar arquivos da pasta</button>
+  <label>SELECIONE PASTA DE TRABALHO:</label>
+  <input type="file" id="folderUpload" webkitdirectory directory multiple />
+  <button onclick="carregarArquivosDaPasta()">Carregar arquivos da pasta</button>
 
-<!-- ▼▼▼ ADICIONAR: Controles para CSV remoto diretamente da raiz do GitHub Pages -->
-<details style="margin:12px 0">
-  <summary style="cursor:pointer;font-weight:bold">➕ Carregar alguns CSVs direto da raiz do site (GitHub Pages)</summary>
-  <p style="font-size:12px;color:#555;margin:8px 0 12px">
-    Se marcado, quando o input estiver <b>vazio</b> o sistema tenta baixar <code>/{nome-do-arquivo}.csv</code> da mesma pasta do site.
-  </p>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
-    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
-      <label style="font-weight:bold"><input type="checkbox" id="remote_entrega" checked> ENTREGAS</label>
-      <input type="text" id="remote_name_entrega" value="entrega.csv" style="width:100%;margin-top:6px">
-      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
+  <details>
+    <summary>➕ Carregar arquivos direto do GitHub (remoto primeiro; local sobrepõe)</summary>
+    <p class="small">
+      Os arquivos remotos são buscados a partir de <code>BASE_REMOTE_URL</code> e devem se chamar <code>BKQBF_TAB-1.csv/.xlsx</code> até <code>BKQBF_TAB-8.csv/.xlsx</code>.<br>
+      Se o usuário selecionar um arquivo local para uma TAB, <b>o local tem prioridade</b> e substitui o remoto.
+    </p>
+    <div class="remote-grid">
+      <div class="remote-item"><label><input type="checkbox" id="remote_tab_1" checked> Usar remoto TAB-1</label><div class="small">produtos_compra</div></div>
+      <div class="remote-item"><label><input type="checkbox" id="remote_tab_2" checked> Usar remoto TAB-2</label><div class="small">entrega</div></div>
+      <div class="remote-item"><label><input type="checkbox" id="remote_tab_3" checked> Usar remoto TAB-3</label><div class="small">produtos_venda</div></div>
+      <div class="remote-item"><label><input type="checkbox" id="remote_tab_4" checked> Usar remoto TAB-4</label><div class="small">receita</div></div>
+      <div class="remote-item"><label><input type="checkbox" id="remote_tab_5" checked> Usar remoto TAB-5</label><div class="small">packing_list</div></div>
+      <div class="remote-item"><label><input type="checkbox" id="remote_tab_6" checked> Usar remoto TAB-6</label><div class="small">tabela_precos_platlog</div></div>
+      <div class="remote-item"><label><input type="checkbox" id="remote_tab_7" checked> Usar remoto TAB-7</label><div class="small">tabela_precos_ambev</div></div>
+      <div class="remote-item"><label><input type="checkbox" id="remote_tab_8" checked> Usar remoto TAB-8</label><div class="small">stock</div></div>
     </div>
-
-    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
-      <label style="font-weight:bold"><input type="checkbox" id="remote_packing_list" checked> PACKING_LIST</label>
-      <input type="text" id="remote_name_packing_list" value="packing_list.csv" style="width:100%;margin-top:6px">
-      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
+    <div style="margin-top:10px">
+      <label style="font-weight:bold">BASE REMOTA (GitHub Pages):</label>
+      <input type="text" id="remote_base_input" style="width:100%" placeholder="https://joaol-adm.github.io/OptiBuy-mpv/" />
+      <div class="small">Se vazio, usa a constante <code>BASE_REMOTE_URL</code> do script.</div>
     </div>
-
-    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
-      <label style="font-weight:bold"><input type="checkbox" id="remote_tabela_precos_platlog" checked> TABELA_PRECOS_PLATLOG</label>
-      <input type="text" id="remote_name_tabela_precos_platlog" value="tabela_precos_platlog.csv" style="width:100%;margin-top:6px">
-      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
-    </div>
-
-    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
-      <label style="font-weight:bold"><input type="checkbox" id="remote_tabela_precos_ambev" checked> TABELA_PRECOS_AMBEV</label>
-      <input type="text" id="remote_name_tabela_precos_ambev" value="tabela_precos_ambev.csv" style="width:100%;margin-top:6px">
-      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
-    </div>
-
-    <div style="border:1px solid #e5e5e5;border-radius:8px;padding:8px 10px">
-      <label style="font-weight:bold"><input type="checkbox" id="remote_stock" checked> STOCK</label>
-      <input type="text" id="remote_name_stock" value="stock.csv" style="width:100%;margin-top:6px">
-      <div style="font-size:12px;color:#666">Nome do arquivo no repositório</div>
-    </div>
-  </div>
-</details>
-<!-- ▲▲▲ FIM DO BLOCO -->
-
-
+  </details>
 
   <div>
-  <!-- INPUTS DE ARQUIVO -->
-  <!-- (mantidos como no original) -->
-  <label>PRODUTOS_COMPRA:</label>
-  <input type="file" id="produtos_compra" accept=".csv,.xlsx">
-  <label>ENTREGA:</label>
-  <input type="file" id="entrega" accept=".csv,.xlsx">
-  <label>PRODUTOS_VENDA:</label>
-  <input type="file" id="produtos_venda" accept=".csv,.xlsx">
-  <label>RECEITA:</label>
-  <input type="file" id="receita" accept=".csv,.xlsx">
-  <label>PACKING_LIST:</label>
-  <input type="file" id="packing_list" accept=".csv,.xlsx">
-  <label>TABELA_PRECOS_PLATLOG:</label>
-  <input type="file" id="tabela_precos_platlog" accept=".csv,.xlsx">
-  <label>TABELA_PRECOS_AMBEV:</label>
-  <input type="file" id="tabela_precos_ambev" accept=".csv,.xlsx">     
-  <label>STOCK:</label>     
-  <input type="file" id="stock" accept=".csv,.xlsx">
+    <label>PRODUTOS_COMPRA:</label>
+    <input type="file" id="produtos_compra" accept=".csv,.xlsx">
+    <label>ENTREGA:</label>
+    <input type="file" id="entrega" accept=".csv,.xlsx">
+    <label>PRODUTOS_VENDA:</label>
+    <input type="file" id="produtos_venda" accept=".csv,.xlsx">
+    <label>RECEITA:</label>
+    <input type="file" id="receita" accept=".csv,.xlsx">
+    <label>PACKING_LIST:</label>
+    <input type="file" id="packing_list" accept=".csv,.xlsx">
+    <label>TABELA_PRECOS_PLATLOG:</label>
+    <input type="file" id="tabela_precos_platlog" accept=".csv,.xlsx">
+    <label>TABELA_PRECOS_AMBEV:</label>
+    <input type="file" id="tabela_precos_ambev" accept=".csv,.xlsx">     
+    <label>STOCK:</label>     
+    <input type="file" id="stock" accept=".csv,.xlsx">
 
-  <button onclick="processar()">REPROCESSAR</button>
-  <button onclick="exportar()">Exportar para XLSX</button>
+    <button onclick="processar()">REPROCESSAR</button>
+    <button onclick="exportar()">Exportar para XLSX</button>
 
-<div class="processing-message" id="processingMessage">
-  <div class="spinner"></div>
-  <span>Aguarde! Processando...</span>
-</div>
+    <div class="processing-message" id="processingMessage">
+      <div class="spinner"></div>
+      <span>Aguarde! Processando...</span>
+    </div>
+  </div>
 
-
-
-
-  <!-- FILTROS POR INTERVALO -->
+  <!-- FILTROS -->
   <div class="filtros">
     <div>
       <label>DESCRICAO contém:</label>
@@ -169,48 +148,105 @@
 
   <div id="tabelaResultado"></div>
 
-  <!-- O RESTANTE DO SCRIPT JAVASCRIPT PERMANECE O MESMO DO CÓDIGO ORIGINAL -->
-  <!-- ADICIONE AO FINAL DO SCRIPT UMA FUNÇÃO aplicarFiltrosExternos() COMO ABAIXO: -->
+  <script>
+    /* =========================
+       CONFIG REMOTA / PRIORIDADE
+       ========================= */
+    // >>> TROQUE A URL ABAIXO PELO SEU CAMINHO DE PÁGINA NO GITHUB PAGES (TERMINE COM "/")
+    const BASE_REMOTE_URL = "https://joaol-adm.github.io/OptiBuy-mpv/"; 
+    const REMOTO_PRIMEIRO = true; // tenta remoto primeiro; se houver arquivo local, local sobrepõe
+    // Quais TABs usar remotamente por padrão (1..8). Marque/desmarque em tempo real pelos checkboxes.
+    const TABS_POR_PADRAO_REMOTAS = new Set([1,2,3,4,5,6,7,8]);
 
-
- <script>
+    /* =========================
+       VARIÁVEIS GLOBAIS
+       ========================= */
     let dadosGlobais = {};
     let planilhaFinal = [];
 
-// ▼▼▼ ADICIONAR: helpers para carregar CSV remoto do GitHub Pages
-function getBaseURL() {
-  // monta base que funciona na raiz e em subpasta do Pages
-  let base = location.origin + location.pathname;
-  if (!base.endsWith('/')) base += '/';
-  return base;
-}
+    const mapaArquivos = {
+      "BKQBF_TAB-1": "produtos_compra",
+      "BKQBF_TAB-2": "entrega",
+      "BKQBF_TAB-3": "produtos_venda",
+      "BKQBF_TAB-4": "receita",
+      "BKQBF_TAB-5": "packing_list",
+      "BKQBF_TAB-6": "tabela_precos_platlog",
+      "BKQBF_TAB-7": "tabela_precos_ambev",
+      "BKQBF_TAB-8": "stock"
+    };
 
-async function lerCSVRemoto(nomeArquivo) {
-  const url = getBaseURL() + nomeArquivo;
-  const resp = await fetch(url, { cache: 'no-store' });
-  if (!resp.ok) {
-    throw new Error(`Falha ao carregar ${url} [${resp.status}]`);
-  }
-  const texto = await resp.text();
-  const workbook = XLSX.read(texto, { type: 'string' });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(sheet, { defval: '' });
-}
+    function tabNumberFromInternalId(internalId) {
+      for (const chave in mapaArquivos) {
+        if (mapaArquivos[chave] === internalId) {
+          const n = parseInt(chave.split('-')[1], 10);
+          return Number.isFinite(n) ? n : null;
+        }
+      }
+      return null;
+    }
 
-function getRemoteToggle(id) {
-  const el = document.getElementById('remote_' + id);
-  return el ? el.checked : false;
-}
-function getRemoteName(id) {
-  const el = document.getElementById('remote_name_' + id);
-  return el ? el.value.trim() : '';
-}
-// ▲▲▲ FIM helpers
+    function getRemoteBase() {
+      const ui = document.getElementById("remote_base_input")?.value?.trim();
+      if (ui) return ui.endsWith("/") ? ui : (ui + "/");
+      return BASE_REMOTE_URL.endsWith("/") ? BASE_REMOTE_URL : (BASE_REMOTE_URL + "/");
+    }
 
+    function isTabRemota(n) {
+      const ui = document.getElementById("remote_tab_" + n);
+      if (ui) return ui.checked;
+      return TABS_POR_PADRAO_REMOTAS.has(n);
+    }
 
-    async function lerArquivo(input) {
+    function nomesRemotosParaTAB(n) {
+      return [`BKQBF_TAB-${n}.csv`, `BKQBF_TAB-${n}.xlsx`];
+    }
+
+    async function lerCSVtextoComoJSON(texto) {
+      const wb = XLSX.read(texto, { type: 'string' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    }
+
+    async function lerArrayBufferComoJSON(buf) {
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    }
+
+    async function lerRemotoPorNome(base, nomeArquivo) {
+      const url = base + nomeArquivo;
+      const lower = nomeArquivo.toLowerCase();
+
+      const resp = await fetch(url, { cache: 'no-store' });
+      if (!resp.ok) throw new Error(`Falha ao baixar ${url} [${resp.status}]`);
+
+      if (lower.endsWith(".csv")) {
+        const texto = await resp.text();
+        return await lerCSVtextoComoJSON(texto);
+      }
+      if (lower.endsWith(".xlsx")) {
+        const buf = await resp.arrayBuffer();
+        return await lerArrayBufferComoJSON(buf);
+      }
+      throw new Error(`Extensão não suportada em ${nomeArquivo}`);
+    }
+
+    async function lerRemotoTAB(n) {
+      const base = getRemoteBase();
+      let ultimaFalha = null;
+      for (const nome of nomesRemotosParaTAB(n)) {
+        try {
+          return await lerRemotoPorNome(base, nome);
+        } catch (e) {
+          ultimaFalha = e;
+        }
+      }
+      throw ultimaFalha || new Error(`Não foi possível carregar remotamente TAB-${n}`);
+    }
+
+    async function lerArquivoLocal(input) {
       return new Promise((resolve) => {
-        const file = input.files[0];
+        const file = input?.files?.[0];
         if (!file) return resolve([]);
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -224,60 +260,73 @@ function getRemoteName(id) {
       });
     }
 
+    /* =========================
+       PIPELINE PRINCIPAL
+       ========================= */
     async function processar() {
       const arquivos = [
         'produtos_compra', 'entrega', 'produtos_venda', 'receita',
         'packing_list', 'tabela_precos_platlog', 'tabela_precos_ambev', 'stock'
       ];
 
- // LIGA spinner
-  document.getElementById('processingMessage').style.display = 'flex';
+      document.getElementById('processingMessage').style.display = 'flex';
 
-   // for (const id of arquivos) {
-   //     dadosGlobais[id] = await lerArquivo(document.getElementById(id));
-   //   }
+      dadosGlobais = {};
 
-for (const id of arquivos) {
-  const inputEl = document.getElementById(id);
-  if (inputEl.files && inputEl.files.length) {
-    // 1) se o usuário selecionou arquivo, usa o local
-    dadosGlobais[id] = await lerArquivo(inputEl);
-  } else if (getRemoteToggle(id)) {
-    // 2) se NÃO tem arquivo e a opção remota está marcada, tenta baixar da raiz do site
-    const nomeRemoto = getRemoteName(id);
-    try {
-      dadosGlobais[id] = await lerCSVRemoto(nomeRemoto);
-    } catch (e) {
-      console.error('Erro ao buscar remoto', id, e);
-      dadosGlobais[id] = []; // garante estrutura
-    }
-  } else {
-    // 3) caso contrário, mantém vazio
-    dadosGlobais[id] = [];
-  }
-}
+      for (const id of arquivos) {
+        const tabNum = tabNumberFromInternalId(id);
+        const inputEl = document.getElementById(id);
+        const temLocal = inputEl?.files?.length > 0;
 
+        // Estratégia: remoto primeiro (se marcado) e, se houver local, local sobrepõe.
+        let carregadoRemoto = false;
+
+        if (REMOTO_PRIMEIRO && tabNum && isTabRemota(tabNum)) {
+          try {
+            dadosGlobais[id] = await lerRemotoTAB(tabNum);
+            carregadoRemoto = true;
+          } catch (e) {
+            console.warn(`Remoto falhou TAB-${tabNum}:`, e);
+            dadosGlobais[id] = [];
+          }
+        } else {
+          dadosGlobais[id] = [];
+        }
+
+        if (temLocal) {
+          try {
+            const localJSON = await lerArquivoLocal(inputEl);
+            if (localJSON?.length) {
+              // Local tem prioridade
+              dadosGlobais[id] = localJSON;
+            }
+          } catch (e) {
+            console.error(`Falha ao ler local para ${id}:`, e);
+            // se remoto já carregou, mantemos; se não, fica []
+          }
+        }
+
+        // Se não é remoto-primeiro, alternativa seria: ler local primeiro e, se vazio e remoto marcado, tentar remoto.
+      }
+
+      // ==== Seu processamento original, inalterado ====
       const compra = dadosGlobais['produtos_compra'];
-      const entrega = Object.fromEntries(dadosGlobais['entrega'].map(e => [e.CODRECEBE, e.Receber]));
-      const packing = Object.fromEntries(dadosGlobais['packing_list'].map(p => [p.CODPL, p.CAIXA]));
-      const platlog = Object.fromEntries(dadosGlobais['tabela_precos_platlog'].map(p => [p.CODPRECO, p.CODIGOSAP]));
-      const estoqueMap = Object.fromEntries(dadosGlobais['stock'].map(s => [s.CODSTK, parseFloat(s.ESTOQUE) || 0]));
+      const entrega = Object.fromEntries((dadosGlobais['entrega'] || []).map(e => [e.CODRECEBE, e.Receber]));
+      const packing = Object.fromEntries((dadosGlobais['packing_list'] || []).map(p => [p.CODPL, p.CAIXA]));
+      const platlog = Object.fromEntries((dadosGlobais['tabela_precos_platlog'] || []).map(p => [p.CODPRECO, p.CODIGOSAP]));
+      const estoqueMap = Object.fromEntries((dadosGlobais['stock'] || []).map(s => [s.CODSTK, parseFloat(s.ESTOQUE) || 0]));
 
-      const venda = dadosGlobais['produtos_venda'];
-      const receita = dadosGlobais['receita'];
+      const venda = dadosGlobais['produtos_venda'] || [];
+      const receita = dadosGlobais['receita'] || [];
 
       const ultimos14Dias = [...new Set(venda.map(v => v.Dia))]
         .filter(d => d)
         .sort((a, b) => new Date(b) - new Date(a))
         .slice(0, 14);
 
-// document.getElementById('processingMessage').style.display = 'flex';
-
-// document.getElementById('processingMessage').style.display = 'none';
-
       let tabela = [];
 
-      for (const item of compra) {
+      for (const item of (compra || [])) {
         const codplat = item.CODPLAT;
         const desc = item.DESCRICAO || '';
         const caixa = parseFloat(packing[codplat]) || 0;
@@ -304,7 +353,7 @@ for (const id of arquivos) {
         const valores = ultimos14Dias.map(d => diasValores[d] || 0);
         const media7 = (valores.slice(0, 7).reduce((a, b) => a + b, 0) / 7).toFixed(1);
         const media14 = (valores.reduce((a, b) => a + b, 0) / 14).toFixed(1);
-        const pico14 = Math.max(...valores).toFixed(1);
+        const pico14 = Math.max(...valores, 0).toFixed(1);
 
         let diasDeEstoque = 100;
         if (parseFloat(media7) > 0) {
@@ -339,8 +388,10 @@ for (const id of arquivos) {
       planilhaFinal = tabela;
       mostrarTabela(tabela, ultimos14Dias);
 
-      // Salvar no localStorage
+      // Salva no localStorage
       localStorage.setItem('planilhaFinal', JSON.stringify(planilhaFinal));
+
+      document.getElementById('processingMessage').style.display = 'none';
     }
 
     function mostrarTabela(tabela, dias) {
@@ -356,7 +407,6 @@ for (const id of arquivos) {
           let val = row[col];
           let classe = '';
           if (col === 'Media-7' || col === 'Media-14') classe = 'azul-claro';
-       //   if (col === 'ProxEntregaQtde') classe = 'verde-claro';
           if (col === 'Pico-14') classe = 'laranja-claro';
           if (col === 'DiasDeEstoque') {
             if (val == 100) classe = 'vermelho-claro';
@@ -365,8 +415,7 @@ for (const id of arquivos) {
             else if (val > 7) classe = 'verde-claro';
           }
           if (col === 'SugestaoCompra' && parseFloat(val) > 0) classe = 'cinza-claro';
-
-	  if (col === 'ProxEntregaQtde' && val > 0) classe = 'verde-claro';
+          if (col === 'ProxEntregaQtde' && val > 0) classe = 'verde-claro';
 
           if (col === 'COMPRAR') {
             html += `<td><input type="number" value="${val}" onchange="planilhaFinal[${i}].COMPRAR = parseInt(this.value) || 0; salvarLocalStorage()"></td>`;
@@ -381,10 +430,6 @@ for (const id of arquivos) {
       html += '</tbody></table>';
       document.getElementById('tabelaResultado').innerHTML = html;
       new Tablesort(document.getElementById('tabela'));
-
-  // DESLIGA spinner ao final
-  document.getElementById('processingMessage').style.display = 'none';
-
     }
 
     function exportar() {
@@ -392,22 +437,18 @@ for (const id of arquivos) {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Resultado");
       const agora = new Date();
-      const nome = `BK26487_${agora.getDate().toString().padStart(2, '0')}${(agora.getMonth()+1).toString().padStart(2, '0')}${agora.getFullYear().toString().slice(-2)}_${agora.getHours().toString().padStart(2, '0')}${agora.getMinutes().toString().padStart(2, '0')}`;
+      const nome = `BK26487_${String(agora.getDate()).padStart(2,'0')}${String(agora.getMonth()+1).padStart(2,'0')}${String(agora.getFullYear()).slice(-2)}_${String(agora.getHours()).padStart(2,'0')}${String(agora.getMinutes()).padStart(2,'0')}`;
       XLSX.writeFile(wb, `${nome}.xlsx`);
     }
 
-    // Salvar planilhaFinal no localStorage após alterações no campo COMPRAR
     function salvarLocalStorage() {
       localStorage.setItem('planilhaFinal', JSON.stringify(planilhaFinal));
     }
 
-    // Ao carregar a página, tenta carregar tabela salva
     window.addEventListener('load', () => {
       const tabelaSalva = localStorage.getItem('planilhaFinal');
       if (tabelaSalva) {
         planilhaFinal = JSON.parse(tabelaSalva);
-        // Precisa extrair os dias para exibir a tabela
-        // Dias estão nas chaves do primeiro item, exceto as fixas
         if (planilhaFinal.length > 0) {
           const todosCampos = Object.keys(planilhaFinal[0]);
           const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "SugestaoCompra", "COMPRAR", "Media-7", "Media-14", "Pico-14"];
@@ -419,7 +460,6 @@ for (const id of arquivos) {
 
     function aplicarFiltrosExternos() {
       const descFiltro = document.getElementById('filtroDescricao').value.toLowerCase();
-
       const getMin = id => parseFloat(document.getElementById(id).value);
       const getMax = id => parseFloat(document.getElementById(id).value);
 
@@ -440,70 +480,47 @@ for (const id of arquivos) {
         const sug = parseFloat(tds[7].textContent);
         const com = parseFloat(tr.querySelector('input[type=number]').value);
 
-        const dentroIntervalo = (val, min, max) => (
-          (!isNaN(min) ? val >= min : true) && (!isNaN(max) ? val <= max : true)
-        );
-
-        const mostrar = desc.includes(descFiltro)
-          && dentroIntervalo(rec, recMin, recMax)
-          && dentroIntervalo(est, estMin, estMax)
-          && dentroIntervalo(sug, sugMin, sugMax)
-          && dentroIntervalo(com, comMin, comMax);
-
+        const dentro = (val, min, max) => ((!isNaN(min) ? val >= min : true) && (!isNaN(max) ? val <= max : true));
+        const mostrar = desc.includes(descFiltro) && dentro(rec, recMin, recMax) && dentro(est, estMin, estMax) && dentro(sug, sugMin, sugMax) && dentro(com, comMin, comMax);
         tr.style.display = mostrar ? '' : 'none';
       });
     }
 
-function carregarArquivosDaPasta() {
-  const folderInput = document.getElementById('folderUpload');
+    function carregarArquivosDaPasta() {
+      const folderInput = document.getElementById('folderUpload');
+      const arquivosSelecionados = folderInput.files;
 
-  const mapaArquivos = {
-    "BKQBF_TAB-1": "produtos_compra",
-    "BKQBF_TAB-2": "entrega",
-    "BKQBF_TAB-3": "produtos_venda",
-    "BKQBF_TAB-4": "receita",
-    "BKQBF_TAB-5": "packing_list",
-    "BKQBF_TAB-6": "tabela_precos_platlog",
-    "BKQBF_TAB-7": "tabela_precos_ambev",
-    "BKQBF_TAB-8": "stock"
-  };
-
-  const arquivosSelecionados = folderInput.files;
-
-  if (!arquivosSelecionados.length) {
-    alert("Nenhuma pasta ou arquivos foram selecionados.");
-    return;
-  }
-
-  const atribuicoes = {};
-
-  for (const file of arquivosSelecionados) {
-    const nomeArquivo = file.name.toUpperCase();
-    for (const substring in mapaArquivos) {
-      if (nomeArquivo.includes(substring)) {
-        const idInput = mapaArquivos[substring];
-        atribuicoes[idInput] = file;
-        break;
+      if (!arquivosSelecionados.length) {
+        alert("Nenhuma pasta ou arquivos foram selecionados.");
+        return;
       }
+
+      const atribuicoes = {};
+      for (const file of arquivosSelecionados) {
+        const nomeArquivo = file.name.toUpperCase();
+        for (const substring in mapaArquivos) {
+          if (nomeArquivo.includes(substring)) {
+            const idInput = mapaArquivos[substring];
+            atribuicoes[idInput] = file;
+            break;
+          }
+        }
+      }
+
+      for (const id in mapaArquivos) {
+        const inputId = mapaArquivos[id];
+        const input = document.getElementById(inputId);
+        if (atribuicoes[inputId]) {
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(atribuicoes[inputId]);
+          input.files = dataTransfer.files;
+        } else {
+          console.warn(`Arquivo correspondente a "${id}" não foi encontrado.`);
+        }
+      }
+
+      alert("Arquivos atribuídos automaticamente com base na pasta. Clique em REPROCESSAR.");
     }
-  }
-
-  for (const id in mapaArquivos) {
-    const inputId = mapaArquivos[id];
-    const input = document.getElementById(inputId);
-    if (atribuicoes[inputId]) {
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(atribuicoes[inputId]);
-      input.files = dataTransfer.files;
-    } else {
-      console.warn(`Arquivo correspondente a "${id}" não foi encontrado.`);
-    }
-  }
-
-  alert("Arquivos atribuídos automaticamente com base na pasta. Clique em REPROCESSAR.");
-}
-
-
   </script>
 </body>
 </html>
