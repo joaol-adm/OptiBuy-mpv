@@ -132,10 +132,10 @@
       <input type="number" id="filtroEstoqueMax" oninput="aplicarFiltrosExternos()">
     </div>
     <div>
-      <label>SugestaoCompra (min):</label>
-      <input type="number" id="filtroSugestaoCompraMin" oninput="aplicarFiltrosExternos()">
-      <label>SugestaoCompra (max):</label>
-      <input type="number" id="filtroSugestaoCompraMax" oninput="aplicarFiltrosExternos()">
+      <label>ReporEstoque (min):</label>
+      <input type="number" id="filtroReporEstoqueMin" oninput="aplicarFiltrosExternos()">
+      <label>ReporEstoque (max):</label>
+      <input type="number" id="filtroReporEstoqueMax" oninput="aplicarFiltrosExternos()">
     </div>
     <div>
       <label>COMPRAR (min):</label>
@@ -363,8 +363,14 @@
           diasDeEstoque = ((estoque + proxEntregaQtde) / parseFloat(media7)).toFixed(1);
         }
 
-        let sugestao = (10 - diasDeEstoque) * parseFloat(media7);
-        sugestao = sugestao > 0 ? sugestao.toFixed(1) : "0";
+        let reporstk = (10 - diasDeEstoque) * parseFloat(media7);
+        reporstk = reporstk > 0 ? reporstk.toFixed(1) : "0";
+
+  	let sugestcx = 0;
+	if (caixa > 0) {
+  	sugestcx = Math.ceil(parseFloat(reporstk) / caixa);
+	}
+
 
         let linha = {
           CODPLAT: codplat,
@@ -374,7 +380,8 @@
           ProxEntregaQtde: proxEntregaQtde,
           ESTOQUE: estoque,
           DiasDeEstoque: diasDeEstoque,
-          SugestaoCompra: sugestao,
+          ReporEstoque: reporstk,
+	  SugestaoCompra: sugestcx,
           COMPRAR: 0,
           'Media-7': media7,
           'Media-14': media14,
@@ -404,7 +411,7 @@
 
     function mostrarTabela(tabela, dias) {
       let html = '<table id="tabela"><thead><tr>';
-      const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "SugestaoCompra", "COMPRAR", "Media-7", "Media-14", "Pico-14"];
+      const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "ReporEstoque", "SugestaoCompra", "COMPRAR", "Media-7", "Media-14", "Pico-14"];
       html += colunasFixas.map(c => `<th>${c}</th>`).join('');
       html += dias.map(d => `<th>${d}</th>`).join('');
       html += '</tr></thead><tbody>';
@@ -422,7 +429,9 @@
             else if (val > 5.9 && val <= 7) classe = 'amarelo-claro';
             else if (val > 7) classe = 'verde-claro';
           }
+          if (col === 'ReporEstoque' && parseFloat(val) > 0) classe = 'cinza-claro';
           if (col === 'SugestaoCompra' && parseFloat(val) > 0) classe = 'cinza-claro';
+
           if (col === 'ProxEntregaQtde' && val > 0) classe = 'verde-claro';
 
           if (col === 'COMPRAR') {
@@ -459,7 +468,7 @@
         planilhaFinal = JSON.parse(tabelaSalva);
         if (planilhaFinal.length > 0) {
           const todosCampos = Object.keys(planilhaFinal[0]);
-          const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "SugestaoCompra", "COMPRAR", "Media-7", "Media-14", "Pico-14"];
+          const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "ReporEstoque", "SugestaoCompra", "COMPRAR", "Media-7", "Media-14", "Pico-14"];
           const dias = todosCampos.filter(c => !colunasFixas.includes(c));
           mostrarTabela(planilhaFinal, dias);
         }
@@ -475,8 +484,8 @@
       const recMax = getMax('filtroReceberMax');
       const estMin = getMin('filtroEstoqueMin');
       const estMax = getMax('filtroEstoqueMax');
-      const sugMin = getMin('filtroSugestaoCompraMin');
-      const sugMax = getMax('filtroSugestaoCompraMax');
+      const sugMin = getMin('filtroReporEstoqueMin');
+      const sugMax = getMax('filtroReporEstoqueMax');
       const comMin = getMin('filtroComprarMin');
       const comMax = getMax('filtroComprarMax');
 
