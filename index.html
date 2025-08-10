@@ -35,7 +35,6 @@
       font-weight: bold;
       color: #004080;
       margin-top: 10px;
-      display: flex;
       align-items: center;
       gap: 10px;
     }
@@ -269,7 +268,11 @@
         'packing_list', 'tabela_precos_platlog', 'tabela_precos_ambev', 'stock'
       ];
 
-      document.getElementById('processingMessage').style.display = 'flex';
+      // document.getElementById('processingMessage').style.display = 'flex';
+
+  const mm = document.getElementById('processingMessage');
+  mm.style.display = 'flex';  // liga só quando o usuário clica
+  try {
 
       dadosGlobais = {};
 
@@ -391,7 +394,12 @@
       // Salva no localStorage
       localStorage.setItem('planilhaFinal', JSON.stringify(planilhaFinal));
 
-      document.getElementById('processingMessage').style.display = 'none';
+  } finally {
+    mm.style.display = 'none'; // desliga SEMPRE ao terminar
+  }
+
+   //   document.getElementById('processingMessage').style.display = 'none';
+
     }
 
     function mostrarTabela(tabela, dias) {
