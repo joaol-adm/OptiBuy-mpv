@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <title>Processador de Planilhas</title>
+  <title>OptiBuy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Bibliotecas externas -->
@@ -11,6 +11,10 @@
 
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
+  h2 { color: #974706; }
+  h3 { color: #004080; } 
+  h4 { color: #EAB200; } 
+  h5 { color: #EE0000; } 
     input[type="file"], input[type="text"], select { margin-bottom: 10px; display: block; }
     button { margin: 10px 5px; padding: 8px 12px; }
     table { border-collapse: collapse; margin-top: 20px; font-size: 14px; width: 100%; }
@@ -57,11 +61,27 @@
   </style>
 </head>
 <body>
-  <h2>Importador de Planilhas</h2>
+
+<!--
+
+https://joaol-adm.github.io/OptiBuy-mpv/OptiBuy_logo.png
+<img src="OpTiBuy_logo.png" alt="Logo do Sistema" style="height: 50px;">
+
+
+-->
+
+<div style="display: flex; align-items: center; gap: 10px;">
+  <img src="https://joaol-adm.github.io/OptiBuy-mpv/OptiBuy_logo.png" alt="Logo do Sistema" style="height: 80px;">
+  <h2 style="margin: 0;"> OptiBuy | Compra Perfeita </h2>
+</div>
+
+   <h5>Uso Exclusivo BK Sorocaba Shoppping  |  Powered by OpTiXis  |  All Rights Reserved  </h5>
 
   <label>SELECIONE PASTA DE TRABALHO:</label>
   <input type="file" id="folderUpload" webkitdirectory directory multiple />
   <button onclick="carregarArquivosDaPasta()">Carregar arquivos da pasta</button>
+
+<!--
 
   <details>
     <summary>➕ Carregar arquivos direto do GitHub (remoto primeiro; local sobrepõe)</summary>
@@ -85,6 +105,8 @@
       <div class="small">Se vazio, usa a constante <code>BASE_REMOTE_URL</code> do script.</div>
     </div>
   </details>
+
+-->
 
   <div>
     <label>PRODUTOS_COMPRA:</label>
