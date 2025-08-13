@@ -405,9 +405,9 @@ https://joaol-adm.github.io/OptiBuy-mpv/OpTiBuy_logo.png
           ReporEstoque: reporstk,
 	  SugestaoCompra: sugestcx,
           COMPRAR: 0,
-          'Media-7': media7,
-          'Media-14': media14,
-          'Pico-14': pico14,
+          'Tendencia': media7,
+          'Comportamento': media14,
+          'Potencial': pico14,
         };
 
         for (const dia of ultimos14Dias) {
@@ -433,7 +433,7 @@ https://joaol-adm.github.io/OptiBuy-mpv/OpTiBuy_logo.png
 
     function mostrarTabela(tabela, dias) {
       let html = '<table id="tabela"><thead><tr>';
-      const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "ReporEstoque", "SugestaoCompra", "COMPRAR", "Media-7", "Media-14", "Pico-14"];
+      const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "ReporEstoque", "SugestaoCompra", "COMPRAR", "Tendencia", "Comportamento", "Potencial"];
       html += colunasFixas.map(c => `<th>${c}</th>`).join('');
       html += dias.map(d => `<th>${d}</th>`).join('');
       html += '</tr></thead><tbody>';
@@ -443,8 +443,8 @@ https://joaol-adm.github.io/OptiBuy-mpv/OpTiBuy_logo.png
         colunasFixas.forEach(col => {
           let val = row[col];
           let classe = '';
-          if (col === 'Media-7' || col === 'Media-14') classe = 'azul-claro';
-          if (col === 'Pico-14') classe = 'laranja-claro';
+          if (col === 'Tendencia' || col === 'Comportamento') classe = 'azul-claro';
+          if (col === 'Potencial') classe = 'laranja-claro';
           if (col === 'DiasDeEstoque') {
             if (val == 100) classe = 'vermelho-claro';
             else if (val > 0 && val <= 5.9) classe = 'laranja-claro';
@@ -490,7 +490,7 @@ https://joaol-adm.github.io/OptiBuy-mpv/OpTiBuy_logo.png
         planilhaFinal = JSON.parse(tabelaSalva);
         if (planilhaFinal.length > 0) {
           const todosCampos = Object.keys(planilhaFinal[0]);
-          const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "ReporEstoque", "SugestaoCompra", "COMPRAR", "Media-7", "Media-14", "Pico-14"];
+          const colunasFixas = ["CODPLAT", "DESCRICAO", "CAIXA", "Receber", "ProxEntregaQtde", "ESTOQUE", "DiasDeEstoque", "ReporEstoque", "SugestaoCompra", "COMPRAR", "Tendencia", "Comportamento", "Potencial"];
           const dias = todosCampos.filter(c => !colunasFixas.includes(c));
           mostrarTabela(planilhaFinal, dias);
         }
